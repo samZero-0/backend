@@ -138,6 +138,41 @@ async function run() {
                 }
             });
         });
+        
+        app.put('/tasks/bulk-update', async (req, res) => {
+            const { tasks } = req.body;
+        
+            // Validate the request payload
+            if (!tasks || !Array.isArray(tasks)) {
+                return res.status(400).json({ error: "Invalid request payload. Expected an array of tasks." });
+            }
+        
+            try {
+                // Create bulk operations for MongoDB
+                const bulkOps = tasks.map(task => ({
+                    updateOne: {
+                        filter: { _id: new ObjectId(task._id) }, // Filter by task ID
+                        update: { $set: { order: task.order } } // Update the order field
+                    }
+                }));
+        
+                // Perform bulk update
+                const result = await taskCollection.bulkWrite(bulkOps);
+        
+                // Notify WebSocket clients about the bulk update
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: "BULK_UPDATE_TASKS", tasks }));
+                    }
+                });
+        
+                // Send success response
+                res.status(200).json({ message: "Bulk update successful", result });
+            } catch (error) {
+                console.error("Error during bulk update:", error);
+                res.status(500).json({ error: "Failed to perform bulk update" });
+            }
+        });
 
     } catch (error) {
         console.error("Error:", error);
