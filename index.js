@@ -93,8 +93,20 @@ async function run() {
         });
 
         app.get('/tasks', async (req, res) => {
-            const result = await taskCollection.find().sort({ order: 1 }).toArray();
-            res.send(result);
+            const userEmail = req.query.user; // Get the user email from the query parameter
+
+            let query = {};
+            if (userEmail) {
+                query = { user: userEmail }; // Filter tasks by user email if provided
+            }
+
+            try {
+                const result = await taskCollection.find(query).sort({ order: 1 }).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching tasks:", error);
+                res.status(500).send({ error: "Failed to fetch tasks" });
+            }
         });
 
         app.put('/tasks/:id', async (req, res) => {
@@ -124,7 +136,6 @@ async function run() {
                 res.status(500).send({ error: "Failed to update task" });
             }
         });
-        
 
         app.delete('/tasks/:id', async (req, res) => {
             const id = req.params.id;
