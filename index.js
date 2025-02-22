@@ -100,18 +100,31 @@ async function run() {
         app.put('/tasks/:id', async (req, res) => {
             const id = req.params.id;
             const updatedTask = req.body;
-            const filter = { _id: new ObjectId(id) };
-            const update = { $set: { ...updatedTask, lastModified: Date.now() } };
-
-            const result = await taskCollection.updateOne(filter, update);
-            res.send(result);
-
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: "UPDATE_TASK", task: updatedTask }));
-                }
-            });
+        
+            console.log("Updating task with ID:", id); // Log the ID
+            console.log("Updated task data:", updatedTask); // Log the task data
+        
+            try {
+                const filter = { _id: new ObjectId(id) };
+                const update = { $set: { ...updatedTask, lastModified: Date.now() } };
+        
+                const result = await taskCollection.updateOne(filter, update);
+                console.log("Update result:", result); // Log the update result
+        
+                res.send(result);
+        
+                // Notify WebSocket clients
+                wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: "UPDATE_TASK", task: updatedTask }));
+                    }
+                });
+            } catch (error) {
+                console.error("Error updating task:", error);
+                res.status(500).send({ error: "Failed to update task" });
+            }
         });
+        
 
         app.delete('/tasks/:id', async (req, res) => {
             const id = req.params.id;
